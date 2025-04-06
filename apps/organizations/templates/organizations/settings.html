@@ -1,0 +1,128 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+
+{% block title %} Organization Settings {% endblock %}
+
+{% block content %}
+
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12 col-xl-4">
+      <div class="card h-100">
+        <div class="card-header pb-0 p-3">
+          <div class="row">
+            <div class="col-md-8 d-flex align-items-center">
+              <h6 class="mb-0">Organization Profile</h6>
+            </div>
+            <div class="col-md-4 text-end">
+              {% if is_owner or is_admin %}
+              <a href="{% url 'organizations:edit' organization.id %}">
+                <i class="fas fa-user-edit text-secondary text-sm" data-bs-toggle="tooltip" data-bs-placement="top" title="Edit Profile"></i>
+              </a>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <div class="card-body p-3">
+          <div class="text-center mb-4">
+            {% if organization.logo %}
+              <img src="{{ organization.logo.url }}" class="avatar avatar-xl" alt="{{ organization.name }}">
+            {% else %}
+              <div class="avatar avatar-xl bg-gradient-primary mx-auto">{{ organization.name|slice:":1" }}</div>
+            {% endif %}
+          </div>
+          <hr class="horizontal gray-light my-4">
+          <ul class="list-group">
+            <li class="list-group-item border-0 ps-0 pt-0 text-sm"><strong class="text-dark">Name:</strong> &nbsp; {{ organization.name }}</li>
+            <li class="list-group-item border-0 ps-0 text-sm"><strong class="text-dark">Owner:</strong> &nbsp; {{ organization.owner.get_full_name|default:organization.owner.username }}</li>
+            <li class="list-group-item border-0 ps-0 text-sm"><strong class="text-dark">Status:</strong> &nbsp; 
+              {% if organization.is_active %}
+                <span class="badge badge-sm bg-gradient-success">Active</span>
+              {% else %}
+                <span class="badge badge-sm bg-gradient-secondary">Inactive</span>
+              {% endif %}
+            </li>
+            <li class="list-group-item border-0 ps-0 text-sm"><strong class="text-dark">Billing Email:</strong> &nbsp; {{ organization.billing_email|default:"Not set" }}</li>
+            <li class="list-group-item border-0 ps-0 text-sm"><strong class="text-dark">Created:</strong> &nbsp; {{ organization.created_at|date:"M d, Y" }}</li>
+          </ul>
+          {% if is_owner %}
+          <hr class="horizontal gray-light my-4">
+          <div class="text-center">
+            <form method="post" action="{% url 'organizations:toggle_status' organization.id %}">
+              {% csrf_token %}
+              {% if organization.is_active %}
+                <button type="submit" class="btn btn-outline-danger btn-sm">Deactivate Organization</button>
+              {% else %}
+                <button type="submit" class="btn btn-outline-success btn-sm">Activate Organization</button>
+              {% endif %}
+            </form>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-xl-8">
+      <div class="card h-100">
+        <div class="card-header pb-0 p-3">
+          <div class="row">
+            <div class="col-6 d-flex align-items-center">
+              <h6 class="mb-0">Members</h6>
+            </div>
+            <div class="col-6 text-end">
+              <a href="{% url 'organizations:members' %}" class="btn btn-outline-primary btn-sm mb-0">View All</a>
+              {% if is_owner or is_admin %}
+              <a href="{% url 'organizations:invite' %}" class="btn btn-primary btn-sm mb-0">Invite Member</a>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <div class="card-body p-3">
+          <ul class="list-group">
+            {% for member in members|slice:":5" %}
+            <li class="list-group-item border-0 d-flex align-items-center px-0 mb-2">
+              <div class="avatar me-3">
+                {% if member.user.profile.avatar %}
+                  <img src="{{ member.user.profile.avatar.url }}" alt="{{ member.user.username }}" class="border-radius-lg shadow">
+                {% else %}
+                  <div class="avatar avatar-sm bg-gradient-secondary">{{ member.user.username|slice:":1" }}</div>
+                {% endif %}
+              </div>
+              <div class="d-flex align-items-start flex-column justify-content-center">
+                <h6 class="mb-0 text-sm">{{ member.user.get_full_name|default:member.user.username }}</h6>
+                <p class="mb-0 text-xs">{{ member.role.name }}</p>
+              </div>
+              <div class="ms-auto">
+                {% if member.user == organization.owner %}
+                  <span class="badge badge-sm bg-gradient-primary">Owner</span>
+                {% endif %}
+                {% if member.status == 'invited' %}
+                  <span class="badge badge-sm bg-gradient-warning">Invited</span>
+                {% endif %}
+              </div>
+            </li>
+            {% empty %}
+            <li class="list-group-item border-0 d-flex align-items-center px-0 mb-2">
+              <p class="text-sm mb-0">No members found.</p>
+            </li>
+            {% endfor %}
+            {% if members.count > 5 %}
+            <li class="list-group-item border-0 d-flex align-items-center px-0 mb-2">
+              <div class="d-flex align-items-center justify-content-center w-100">
+                <a href="{% url 'organizations:members' %}" class="btn btn-outline-primary btn-sm mb-0">View All Members ({{ members.count }})</a>
+              </div>
+            </li>
+            {% endif %}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock content %}
+
+{% block javascripts %}
+<script>
+  // Any JavaScript needed for this page
+</script>
+{% endblock javascripts %}

@@ -1,0 +1,41 @@
+# Core
+django==4.2.9
+django-allauth==0.60.1
+PyJWT==2.8.0
+python-dotenv==1.0.1
+str2bool==1.1
+django-quill-editor==0.1.40
+
+# Misc
+celery==5.3.4
+redis==5.0.1
+hiredis==3.1.0
+Pillow==11.1.0
+python-json-logger==2.0.7
+
+# WebSockets
+channels==4.0.0
+channels-redis==4.1.0
+daphne==4.0.0
+
+# Tools
+django-celery-results==2.5.1
+django-celery-beat==2.5.0
+djangorestframework==3.14.0
+django-api-generator==1.0.17
+django-debug-toolbar==4.2.0
+drf-spectacular==0.26.5
+
+# Deployment
+whitenoise==6.5.0
+gunicorn==21.2.0
+cryptography==42.0.2
+
+# DB Layer
+psycopg2-binary==2.9.9
+# mysqlclient
+
+# ENTERPRISE Version
+#  - CVS to Model
+#  - Loader
+# pandas==2.2.3

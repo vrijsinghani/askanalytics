@@ -1,0 +1,92 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+
+{% block title %} Organizations {% endblock %}
+
+{% block content %}
+
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="card mb-4">
+        <div class="card-header pb-0 d-flex justify-content-between align-items-center">
+          <h6>Your Organizations</h6>
+          <a href="{% url 'organizations:create' %}" class="btn btn-sm btn-primary">Create Organization</a>
+        </div>
+        <div class="card-body px-0 pt-0 pb-2">
+          <div class="table-responsive p-0">
+            <table class="table align-items-center mb-0">
+              <thead>
+                <tr>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Organization</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Role</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Status</th>
+                  <th class="text-secondary opacity-7"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for membership in memberships %}
+                <tr>
+                  <td>
+                    <div class="d-flex px-2 py-1">
+                      <div>
+                        {% if membership.organization.logo %}
+                          <img src="{{ membership.organization.logo.url }}" class="avatar avatar-sm me-3" alt="{{ membership.organization.name }}">
+                        {% else %}
+                          <div class="avatar avatar-sm me-3 bg-gradient-primary">{{ membership.organization.name|slice:":1" }}</div>
+                        {% endif %}
+                      </div>
+                      <div class="d-flex flex-column justify-content-center">
+                        <h6 class="mb-0 text-sm">{{ membership.organization.name }}</h6>
+                        <p class="text-xs text-secondary mb-0">
+                          {% if membership.organization.owner == request.user %}
+                            Owner
+                          {% endif %}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <p class="text-xs font-weight-bold mb-0">{{ membership.role.name }}</p>
+                  </td>
+                  <td>
+                    {% if membership.organization.is_active %}
+                      <span class="badge badge-sm bg-gradient-success">Active</span>
+                    {% else %}
+                      <span class="badge badge-sm bg-gradient-secondary">Inactive</span>
+                    {% endif %}
+                  </td>
+                  <td class="align-middle">
+                    {% if membership.organization.id|stringformat:"s" == active_org_id %}
+                      <span class="badge badge-sm bg-gradient-info">Current</span>
+                    {% else %}
+                      <a href="{% url 'organizations:switch' membership.organization.id %}?next={{ request.path }}" class="btn btn-link text-secondary mb-0">
+                        <i class="fa fa-exchange-alt text-xs"></i> Switch
+                      </a>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="4" class="text-center py-4">
+                    <p class="text-sm mb-0">You don't have any organizations yet.</p>
+                    <a href="{% url 'organizations:create' %}" class="btn btn-sm btn-primary mt-3">Create Organization</a>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock content %}
+
+{% block javascripts %}
+<script>
+  // Any JavaScript needed for this page
+</script>
+{% endblock javascripts %}

@@ -1,0 +1,164 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+
+{% block title %} API Token {% endblock %}
+
+{% block content %}
+
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="card mb-4">
+        <div class="card-header pb-0">
+          <h6>API Token Management</h6>
+        </div>
+        <div class="card-body px-4 pt-0 pb-2">
+          {% if messages %}
+            {% for message in messages %}          
+              <div class="alert {{ message.tags }} alert-dismissible" role="alert">
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">
+                </button>
+                <p class="mb-0">{{ message }}</p>
+              </div>
+            {% endfor %}
+          {% endif %}
+          
+          <div class="row mt-4">
+            <div class="col-12">
+              <div class="form-group">
+                <label for="api-token" class="form-control-label">Your API Token</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" id="api-token" value="{{ token }}" readonly>
+                  <button class="btn btn-outline-secondary" type="button" id="copy-token">
+                    <i class="fas fa-copy"></i> Copy
+                  </button>
+                </div>
+                <small class="form-text text-muted">
+                  Created: {{ created|date:"F j, Y, g:i a" }}
+                </small>
+              </div>
+            </div>
+          </div>
+          
+          <div class="row mt-4">
+            <div class="col-12">
+              <div class="alert alert-warning" role="alert">
+                <h4 class="alert-heading">Warning!</h4>
+                <p>Regenerating your API token will invalidate your existing token. Any applications or scripts using your current token will stop working.</p>
+                <hr>
+                <p class="mb-0">Make sure to update all applications using your API token after regenerating.</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="row mt-2">
+            <div class="col-12">
+              <form method="post" action="{% url 'users:regenerate_token' %}" id="regenerate-form">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">
+                  <i class="fas fa-sync-alt"></i> Regenerate Token
+                </button>
+              </form>
+            </div>
+          </div>
+          
+          <div class="row mt-4">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-header">
+                  <h6>How to Use Your API Token</h6>
+                </div>
+                <div class="card-body">
+                  <p>Include your API token in the Authorization header of your HTTP requests:</p>
+                  <pre><code>Authorization: Token {{ token }}</code></pre>
+                  
+                  <p class="mt-3">Example using curl:</p>
+                  <pre><code>curl -H "Authorization: Token {{ token }}" {{ request.scheme }}://{{ request.get_host }}/api/endpoint/</code></pre>
+                  
+                  <p class="mt-3">Example using Python requests:</p>
+                  <pre><code>import requests
+
+headers = {
+    'Authorization': 'Token {{ token }}'
+}
+response = requests.get('{{ request.scheme }}://{{ request.get_host }}/api/endpoint/', headers=headers)
+</code></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock content %}
+
+{% block javascripts %}
+<script>
+  // Copy token to clipboard
+  document.getElementById('copy-token').addEventListener('click', function() {
+    var tokenInput = document.getElementById('api-token');
+    tokenInput.select();
+    document.execCommand('copy');
+    
+    // Show feedback
+    var button = this;
+    var originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-check"></i> Copied!';
+    button.classList.remove('btn-outline-secondary');
+    button.classList.add('btn-success');
+    
+    setTimeout(function() {
+      button.innerHTML = originalText;
+      button.classList.remove('btn-success');
+      button.classList.add('btn-outline-secondary');
+    }, 2000);
+  });
+  
+  // AJAX form submission for token regeneration
+  document.getElementById('regenerate-form').addEventListener('submit', function(e) {
+    if (confirm('Are you sure you want to regenerate your API token? This will invalidate your existing token.')) {
+      e.preventDefault();
+      
+      var form = this;
+      var url = form.getAttribute('action');
+      var csrfToken = form.querySelector('input[name="csrfmiddlewaretoken"]').value;
+      
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': csrfToken,
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        // Update token display
+        document.getElementById('api-token').value = data.token;
+        
+        // Show success message
+        var alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-success alert-dismissible';
+        alertDiv.role = 'alert';
+        alertDiv.innerHTML = `
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          <p class="mb-0">${data.message}</p>
+        `;
+        
+        // Insert alert before the form
+        form.parentNode.insertBefore(alertDiv, form);
+        
+        // Update created date
+        var createdDate = new Date(data.created);
+        var options = { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric' };
+        document.querySelector('.form-text.text-muted').textContent = 'Created: ' + createdDate.toLocaleDateString('en-US', options);
+      })
+      .catch(error => {
+        console.error('Error:', error);
+      });
+    }
+  });
+</script>
+{% endblock javascripts %}
