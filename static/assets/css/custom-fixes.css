@@ -1,0 +1,156 @@
+/* 
+ * custom-fixes.css
+ * Custom styles and fixes for AskAnalytics
+ */
+
+/* ===== Dark Mode Fixes ===== */
+.dark-version .form-control {
+    color: rgba(255, 255, 255, 0.8);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .dark-version .form-control:focus {
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+  
+  .dark-version .input-group-text {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.8);
+  }
+  
+  .dark-version .dropdown-menu {
+    background-color: #1a2035;
+    box-shadow: 0 8px 26px -4px rgba(0, 0, 0, 0.5);
+  }
+  
+  .dark-version .dropdown-item:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  /* Fix for modal backdrops in dark mode */
+  .dark-version .modal-backdrop {
+    opacity: 0.8 !important;
+  }
+  
+  .dark-version .modal-content {
+    background-color: #1a2035;
+    color: rgba(255, 255, 255, 0.8);
+  }
+  
+  /* ===== HTMX Loading Indicators ===== */
+  .htmx-indicator {
+    opacity: 0;
+    transition: opacity 200ms ease-in;
+  }
+  
+  .htmx-request .htmx-indicator {
+    opacity: 1;
+  }
+  
+  .htmx-request.htmx-indicator {
+    opacity: 1;
+  }
+  
+  /* Pulsing effect for loading indicators */
+  @keyframes htmx-pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+  }
+  
+  .htmx-request .htmx-indicator-pulse {
+    animation: htmx-pulse 1s ease-in-out infinite;
+  }
+  
+  /* ===== WebSocket Status Indicators ===== */
+  .ws-connecting {
+    color: #f7c46c;
+  }
+  
+  .ws-connected {
+    color: #82d616;
+  }
+  
+  .ws-error {
+    color: #ea0606;
+  }
+  
+  /* ===== Custom Components ===== */
+  /* Organization Switcher */
+  .organization-switcher {
+    position: relative;
+  }
+  
+  .organization-switcher .dropdown-menu {
+    width: 280px;
+    padding: 0.5rem 0;
+  }
+  
+  .organization-switcher .dropdown-item {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+  }
+  
+  .organization-switcher .dropdown-item .avatar {
+    margin-right: 0.75rem;
+  }
+  
+  .organization-switcher .dropdown-item.active {
+    font-weight: 600;
+  }
+  
+  /* ===== Responsive Fixes ===== */
+  @media (max-width: 767.98px) {
+    .navbar .navbar-nav .nav-link {
+      padding: 0.5rem 0.75rem;
+    }
+    
+    .card-header {
+      flex-direction: column;
+      align-items: flex-start !important;
+    }
+    
+    .card-header .btn {
+      margin-top: 0.5rem;
+      align-self: flex-start;
+    }
+  }
+  
+  /* ===== Utility Classes ===== */
+  .cursor-pointer {
+    cursor: pointer;
+  }
+  
+  .transition-all {
+    transition: all 0.2s ease;
+  }
+  
+  /* Fade in animation */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  .fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  
+  /* ===== Accessibility Improvements ===== */
+  :focus {
+    outline: 2px solid rgba(26, 44, 76, 0.5);
+    outline-offset: 2px;
+  }
+  
+  .dark-version :focus {
+    outline-color: rgba(255, 255, 255, 0.5);
+  }
+  
+  /* Improve contrast for text on colored backgrounds */
+  .bg-gradient-primary {
+    color: white !important;
+  }
+  
+  .bg-gradient-info {
+    color: white !important;
+  }

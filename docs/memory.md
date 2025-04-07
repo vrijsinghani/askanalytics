@@ -37,7 +37,13 @@ _Add important discoveries and learnings here as we progress through the migrati
 
 ### UI and Interaction
 
--
+- Implemented theme customizations with custom variables and CSS overrides
+- Added dark mode support with persistence to both localStorage and user profile
+- Set up WebSocket infrastructure with HTMX integration
+- Created a real-time notification component using HTMX and WebSockets
+- Added CSRF token handling for HTMX requests
+- Improved theme initialization to prevent flickering when loading pages
+- Created custom CSS fixes for dark mode and responsive design
 
 ### Deployment
 

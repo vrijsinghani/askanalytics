@@ -1,0 +1,70 @@
+<!-- Organization Switcher Component -->
+<div class="dropdown">
+  <a href="#" class="nav-link d-flex align-items-center gap-2" id="orgSwitcherDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+    {% if current_organization.logo %}
+      <img src="{{ current_organization.logo.url }}" alt="{{ current_organization.name }}" class="icon icon-shape icon-sm shadow border-radius-md bg-white text-center d-flex align-items-center justify-content-center" width="24" height="24">
+    {% else %}
+      <span class="icon icon-shape icon-sm shadow border-radius-md bg-white text-center d-flex align-items-center justify-content-center text-primary text-sm opacity-10" style="width: 24px; height: 24px;">
+        {{ current_organization.name|slice:":1" }}
+      </span>
+    {% endif %}
+    <span class="nav-link-text ms-1 text-truncate" style="max-width: 150px;">{{ current_organization.name }}</span>
+    <i class="fas fa-caret-down ms-1"></i>
+  </a>
+  
+  <ul class="dropdown-menu bg-white" aria-labelledby="orgSwitcherDropdown">
+    <li class="dropdown-header">Your Organizations</li>
+    
+    {% for membership in memberships %}
+      <li>
+        <form method="post" action="{% url 'organizations:switch' membership.organization.id %}" class="m-0">
+          {% csrf_token %}
+          <input type="hidden" name="redirect_url" value="{{ request.path }}">
+          
+          <button type="submit" class="dropdown-item d-flex align-items-center gap-2 {% if membership.organization.id == current_organization.id %}active{% endif %}">
+            {% if membership.organization.logo %}
+              <img src="{{ membership.organization.logo.url }}" alt="{{ membership.organization.name }}" class="icon icon-shape icon-sm shadow border-radius-md bg-white text-center d-flex align-items-center justify-content-center" width="24" height="24">
+            {% else %}
+              <span class="icon icon-shape icon-sm shadow border-radius-md bg-white text-center d-flex align-items-center justify-content-center text-primary text-sm opacity-10" style="width: 24px; height: 24px;">
+                {{ membership.organization.name|slice:":1" }}
+              </span>
+            {% endif %}
+            <div class="d-flex flex-column">
+              <span>{{ membership.organization.name }}</span>
+              <small class="text-muted">{{ membership.role.name }}</small>
+            </div>
+            {% if membership.organization.id == current_organization.id %}
+              <i class="fas fa-check ms-auto"></i>
+            {% endif %}
+          </button>
+        </form>
+      </li>
+    {% endfor %}
+    
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item" href="{% url 'organizations:settings' %}">Organization Settings</a></li>
+  </ul>
+</div>
+
+<style>
+  .org-switcher .btn {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    color: #212529;
+    font-weight: 500;
+    padding: 0.375rem 0.75rem;
+    max-width: 200px;
+  }
+  
+  .org-switcher .org-name {
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  .org-switcher .dropdown-item.active {
+    background-color: #f8f9fa;
+    color: #212529;
+  }
+</style>

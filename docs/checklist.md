@@ -29,10 +29,10 @@ This document provides a checklist to track progress on the migration from neura
 
 ## Phase 4: UI and Interaction
 
-- [ ] Implement theme customizations
-- [ ] Add dark mode support
-- [ ] Set up WebSocket infrastructure
-- [ ] Implement HTMX patterns
+- [x] Implement theme customizations
+- [x] Add dark mode support
+- [x] Set up WebSocket infrastructure
+- [x] Implement HTMX patterns
 - [ ] Audit JavaScript components for HTMX conversion
 - [ ] Create HTMX alternatives for common UI components
 - [ ] Research and integrate open source HTMX components

@@ -1,0 +1,167 @@
+{% load static %}
+
+<div class="dropdown" 
+     id="notification-container"
+     hx-ext="ws"
+     ws-connect="/ws/notifications/">
+  
+  <a href="#" class="nav-link dropdown-toggle" id="notificationDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+    <i class="fa fa-bell cursor-pointer"></i>
+    <span id="notification-count" class="badge badge-sm bg-gradient-danger position-absolute top-5 end-5 {% if not unread_count %}d-none{% endif %}">
+      {{ unread_count|default:"0" }}
+    </span>
+  </a>
+  
+  <ul class="dropdown-menu dropdown-menu-end px-2 py-3 me-sm-n4" aria-labelledby="notificationDropdown">
+    {% if notifications %}
+      {% for notification in notifications %}
+        <li class="mb-2">
+          <a class="dropdown-item border-radius-md" href="{{ notification.link }}">
+            <div class="d-flex py-1">
+              <div class="my-auto">
+                <i class="fa fa-{{ notification.icon|default:'bell' }} me-3 text-{{ notification.color|default:'primary' }}"></i>
+              </div>
+              <div class="d-flex flex-column justify-content-center">
+                <h6 class="text-sm font-weight-normal mb-1">
+                  {{ notification.title }}
+                </h6>
+                <p class="text-xs text-secondary mb-0">
+                  <i class="fa fa-clock me-1"></i>
+                  {{ notification.timestamp|timesince }} ago
+                </p>
+              </div>
+            </div>
+          </a>
+        </li>
+      {% endfor %}
+    {% else %}
+      <li class="text-center py-2 text-muted">
+        <i class="fa fa-check-circle me-1"></i> No new notifications
+      </li>
+    {% endif %}
+    
+    {% if notifications %}
+      <li>
+        <hr class="dropdown-divider">
+      </li>
+      <li>
+        <a class="dropdown-item text-center text-primary font-weight-bold py-2" href="{% url 'notifications:list' %}">
+          View all
+        </a>
+      </li>
+    {% endif %}
+  </ul>
+</div>
+
+<!-- This is a template for new notifications that will be swapped in via WebSocket -->
+<template id="notification-template">
+  <li class="mb-2 fade-in" hx-swap-oob="beforeend:#notification-container ul">
+    <a class="dropdown-item border-radius-md" href="${link}">
+      <div class="d-flex py-1">
+        <div class="my-auto">
+          <i class="fa fa-${icon} me-3 text-${color}"></i>
+        </div>
+        <div class="d-flex flex-column justify-content-center">
+          <h6 class="text-sm font-weight-normal mb-1">
+            ${title}
+          </h6>
+          <p class="text-xs text-secondary mb-0">
+            <i class="fa fa-clock me-1"></i>
+            just now
+          </p>
+        </div>
+      </div>
+    </a>
+  </li>
+</template>
+
+<!-- This is for updating the notification count -->
+<template id="notification-count-template">
+  <span id="notification-count" class="badge badge-sm bg-gradient-danger position-absolute top-5 end-5" hx-swap-oob="true">
+    ${count}
+  </span>
+</template>
+
+<script>
+  // Listen for WebSocket messages and handle them
+  document.addEventListener('htmx:wsAfterMessage', function(event) {
+    try {
+      const data = JSON.parse(event.detail.message);
+      
+      // If this is a notification message
+      if (data.type === 'notification') {
+        // Update the notification count
+        const countElement = document.getElementById('notification-count');
+        if (countElement) {
+          const currentCount = parseInt(countElement.textContent) || 0;
+          const newCount = currentCount + 1;
+          
+          // Make the count visible if it was hidden
+          countElement.classList.remove('d-none');
+          
+          // Update the count
+          countElement.textContent = newCount;
+        }
+        
+        // Add the new notification to the list
+        const template = document.getElementById('notification-template');
+        if (template) {
+          const content = template.innerHTML
+            .replace('${link}', data.link || '#')
+            .replace('${icon}', data.icon || 'bell')
+            .replace('${color}', data.color || 'primary')
+            .replace('${title}', data.title || 'New notification');
+          
+          // Find the empty state message and remove it if it exists
+          const emptyState = document.querySelector('#notification-container ul li.text-muted');
+          if (emptyState) {
+            emptyState.remove();
+          }
+          
+          // Add the "View all" link if it doesn't exist
+          const viewAllLink = document.querySelector('#notification-container ul li a.text-primary');
+          if (!viewAllLink) {
+            const dropdownMenu = document.querySelector('#notification-container ul');
+            if (dropdownMenu) {
+              const divider = document.createElement('li');
+              divider.innerHTML = '<hr class="dropdown-divider">';
+              dropdownMenu.appendChild(divider);
+              
+              const viewAll = document.createElement('li');
+              viewAll.innerHTML = '<a class="dropdown-item text-center text-primary font-weight-bold py-2" href="/notifications/">View all</a>';
+              dropdownMenu.appendChild(viewAll);
+            }
+          }
+          
+          // Create a temporary container to hold the new notification
+          const temp = document.createElement('div');
+          temp.innerHTML = content;
+          
+          // Get the first child (the notification li element)
+          const notification = temp.firstElementChild;
+          
+          // Add it to the dropdown menu
+          const dropdownMenu = document.querySelector('#notification-container ul');
+          if (dropdownMenu) {
+            dropdownMenu.insertBefore(notification, dropdownMenu.querySelector('li:last-child'));
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Error handling WebSocket message:', e);
+    }
+  });
+  
+  // Handle WebSocket connection status
+  document.addEventListener('htmx:wsOpen', function(event) {
+    console.log('Notification WebSocket connected');
+  });
+  
+  document.addEventListener('htmx:wsClose', function(event) {
+    console.log('Notification WebSocket closed');
+  });
+  
+  document.addEventListener('htmx:wsError', function(event) {
+    console.error('Notification WebSocket error:', event);
+  });
+</script>

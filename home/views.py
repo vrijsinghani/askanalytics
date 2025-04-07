@@ -7,6 +7,11 @@ from django.contrib.auth.decorators import login_required
 
 # Dashboard
 def default(request):
+  # Show landing page for unauthenticated users
+  if not request.user.is_authenticated:
+    return render(request, 'landing.html')
+
+  # Show dashboard for authenticated users
   context = {
     'parent': 'dashboard',
     'segment': 'default'
@@ -339,7 +344,7 @@ def basic_register(request):
       return redirect('/accounts/login/basic-login/')
   else:
     form = RegistrationForm()
-  
+
   context = {'form': form}
   return render(request, 'authentication/signup/basic.html', context)
 
@@ -431,4 +436,4 @@ def error_500(request, exception=None):
 
 def logout_view(request):
   logout(request)
-  return redirect('/accounts/login/basic-login/')
+  return redirect('/accounts/login/illustration-login/')

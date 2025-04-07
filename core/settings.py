@@ -50,7 +50,10 @@ if not SECRET_KEY:
 DEBUG = str2bool(os.environ.get('DEBUG'))
 #print(' DEBUG -> ' + str(DEBUG) )
 
-ALLOWED_HOSTS = ['*']
+# Add localhost to ALLOWED_HOSTS for Docker health checks
+APP_DOMAIN = os.getenv('APP_DOMAIN', '')
+ALLOWED_HOSTS =  [domain.strip() for domain in APP_DOMAIN.split(',') if domain.strip()]
+ALLOWED_HOSTS.extend(['localhost', '127.0.0.1','localhost:3010'])
 
 # Used by DEBUG-Toolbar
 INTERNAL_IPS = [
@@ -60,7 +63,6 @@ INTERNAL_IPS = [
 # Add here your deployment HOSTS
 CSRF_TRUSTED_ORIGINS = [f'https://{domain}' for domain in os.getenv('APP_DOMAIN', '').split(',') if domain.strip()]
 CSRF_TRUSTED_ORIGINS.extend([f'http://{domain}' for domain in os.getenv('APP_DOMAIN', '').split(',') if domain.strip()])
-CSRF_TRUSTED_ORIGINS.extend(['http://localhost:8000', 'http://localhost:5085', 'http://127.0.0.1:8000', 'http://127.0.0.1:5085'])
 
 
 # Application definition

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  {% include "includes/head.html" %}
+  <title>{% block title %}AskAnalytics{% endblock %}</title>
+  {% block extrastyle %}{% endblock extrastyle %}
+</head>
+
+<body class="g-sidenav-show">
+  {% block sidebar %}
+    <!-- Sidebar is empty for landing page -->
+  {% endblock sidebar %}
+
+  <main class="main-content position-relative max-height-vh-100 h-100">
+    {% block navigation %}
+      <!-- Navigation is defined in the landing page -->
+    {% endblock navigation %}
+    {% block content %}{% endblock content %}
+  </main>
+
+  {% block configurator %}
+    <!-- Configurator is empty for landing page -->
+  {% endblock configurator %}
+
+  {% include "includes/scripts.html" %}
+  {% block extra_js %}{% endblock extra_js %}
+</body>
+
+</html>

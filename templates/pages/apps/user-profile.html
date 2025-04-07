@@ -14,7 +14,7 @@
           <span class="badge badge-success">Pro</span>
         </div>
         <div class="media d-flex user-about-block align-items-center mt-0 mb-3">
-          <form method="post" action="{% url "upload_avatar" %}" class="position-relative d-inline-block" enctype="multipart/form-data">
+          <form method="post" action="{% url "users:upload_avatar" %}" class="position-relative d-inline-block" enctype="multipart/form-data">
             {% csrf_token %}
 
             <input type="file" onchange="this.form.submit()" name="avatar" class="d-none" id="avatar">
@@ -24,7 +24,7 @@
               {% else %}
                 <img class="rounded" width="60px" src="{% static 'assets/img/team-2.jpg' %}" alt="User image">
               {% endif %}
-             
+
             </label>
           </form>
           <div class="media-body ms-3">
@@ -77,7 +77,7 @@
       <div class="tab-pane fade show active" id="user-set-profile" role="tabpanel"
         aria-labelledby="user-set-profile-tab">
         {% if messages %}
-          {% for message in messages %}          
+          {% for message in messages %}
             <div class="alert {{ message.tags }} alert-dismissible" role="alert">
               <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">
               </button>
@@ -129,7 +129,7 @@
         </div>
       </div>
       <div class="tab-pane fade" id="user-set-information" role="tabpanel" aria-labelledby="user-set-information-tab">
-        <form method="post" action="" class="card">
+        <form method="post" action="{% url "users:profile" %}" class="card">
           {% csrf_token %}
 
           <div class="card-header">
@@ -195,7 +195,7 @@
         </form>
       </div>
       <div class="tab-pane fade" id="user-set-passwort" role="tabpanel" aria-labelledby="user-set-passwort-tab">
-        <form method="post" action="{% url "change_password" %}" class="card">
+        <form method="post" action="{% url "users:change_password" %}" class="card">
           {% csrf_token %}
 
           <div class="card-header">

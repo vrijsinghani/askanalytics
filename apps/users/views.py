@@ -47,6 +47,29 @@ def upload_avatar(request):
     return redirect(request.META.get('HTTP_REFERER'))
 
 
+@login_required
+def change_mode(request):
+    """
+    Toggle dark mode for the current user.
+    This view is called via AJAX from the dark mode toggle in the configurator.
+    """
+    if request.method == 'POST':
+        profile = get_object_or_404(Profile, user=request.user)
+        dark_mode = request.POST.get('dark_mode', 'false')
+        profile.dark_mode = dark_mode.lower() == 'true'
+        profile.save()
+
+        return JsonResponse({
+            'success': True,
+            'dark_mode': profile.dark_mode
+        })
+
+    return JsonResponse({
+        'success': False,
+        'error': 'Method not allowed'
+    }, status=405)
+
+
 def change_password(request):
     user = request.user
     if request.method == 'POST':

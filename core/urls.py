@@ -33,7 +33,7 @@ urlpatterns = [
     path('charts/', include('apps.charts.urls')),
     path('tasks/', include('apps.tasks.urls')),
     path("tables/", include("apps.tables.urls")),
-    path('', include('apps.file_manager.urls')),
+    path('file-manager/', include('apps.file_manager.urls')),
     path("users/", include("apps.users.urls")),
     path('accounts/', include('allauth.urls')),
     path('organizations/', include('apps.organizations.urls')),

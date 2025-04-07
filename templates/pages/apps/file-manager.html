@@ -46,13 +46,13 @@
             {% if directory.directories %}
             <li class="">
               <i class="fas fa-folder"></i>
-              <a 
-                data-bs-toggle="collapse" 
-                href="#collapse{{directory.id}}" 
-                role="button" 
+              <a
+                data-bs-toggle="collapse"
+                href="#collapse{{directory.id}}"
+                role="button"
                 aria-expanded="false"
                 aria-controls="collapse{{directory.id}}"
-                onclick="window.location.href = '{% url 'file_manager' directory.path|encoded_path %}';"
+                onclick="window.location.href = '{% url 'file_manager:file_manager' directory.path|encoded_path %}';"
               >
                 {{ directory.name }}
               </a>
@@ -61,7 +61,7 @@
           {% else %}
             <li>
               <i class="fas fa-folder"></i>
-              <a href="{% url 'file_manager' directory.path|encoded_path %}">{{ directory.name }}</a>
+              <a href="{% url 'file_manager:file_manager' directory.path|encoded_path %}">{{ directory.name }}</a>
             </li>
             {% endif %}
           {% endfor %}
@@ -72,7 +72,7 @@
           <label for="fileInput">
             <i class="fas fa-upload text-primary fs-3"></i>
           </label>
-          <form method="post" action="{% url 'upload_file' %}" id="upload-file" enctype="multipart/form-data">
+          <form method="post" action="{% url 'file_manager:upload_file' %}" id="upload-file" enctype="multipart/form-data">
             {% csrf_token %}
             <input type="hidden" name="directory" value="{{ selected_directory }}">
             <input id="fileInput" class="d-none" onchange="submitForm()" type="file" name="file" required>
@@ -121,7 +121,7 @@
                         <h1 class="modal-title fs-5" id="staticBackdropLabel">{{ file.filename }}</h1>
                       </div>
                       <div>
-                        <a href="{% url 'download_file' file.file|encoded_file_path %}">
+                        <a href="{% url 'file_manager:download_file' file.file|encoded_file_path %}">
                           <i title="Download" class="fas fa-download text-success fs-4"></i>
                         </a>
                       </div>
@@ -157,7 +157,7 @@
                     </div>
                     <div class="modal-footer">
                       <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                      <a class="btn btn-danger" href="{% url 'delete_file' file.file|encoded_file_path %}">Delete</a>
+                      <a class="btn btn-danger" href="{% url 'file_manager:delete_file' file.file|encoded_file_path %}">Delete</a>
                     </div>
                   </div>
                 </div>
@@ -173,7 +173,7 @@
                       </div>
                     </div>
                     <div class="modal-body">
-                      <form action="{% url 'save_info' file.file_path|encoded_file_path %}" method="post">
+                      <form action="{% url 'file_manager:save_info' file.file_path|encoded_file_path %}" method="post">
                         {% csrf_token %}
                         <div class="form-group mb-2">
                           <label for="" class="form-label">File Info</label>
@@ -195,7 +195,7 @@
         {% endif %}
       </div>
     </div>
-  
+
   </div>
 
 {% endblock content %}
@@ -207,7 +207,7 @@
   function submitForm() {
     document.getElementById("upload-file").submit();
   }
-  
+
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' || event.key === 'Esc' || event.key === 27) {
       let files = document.getElementById('files-count').textContent;

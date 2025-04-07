@@ -7,6 +7,7 @@
 
 <script src="{% static "assets/js/plugins/dragula/dragula.min.js" %}"></script>
 <script src="{% static "assets/js/plugins/jkanban/jkanban.js" %}"></script>
+<script src="{% static "assets/js/plugins/flatpickr.min.js" %}"></script>
 
 <script>
     var win = navigator.platform.indexOf('Win') > -1;
@@ -21,3 +22,23 @@
   <script async defer src="https://buttons.github.io/buttons.js"></script>
   <!-- Control Center for Soft Dashboard: parallax effects, scripts for the example pages etc -->
   <script src="{% static "assets/js/soft-ui-dashboard.min.js" %}?v=1.2.0"></script>
+  <!-- HTMX -->
+  <script src="{% static 'assets/js/plugins/htmx.min.js' %}"></script>
+  <!-- Hyperscript for declarative scripting -->
+  <script src="https://unpkg.com/hyperscript.org@0.9.12"></script>
+
+  <!-- HTMX CSRF Configuration -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Add CSRF token to all HTMX requests
+      document.body.addEventListener('htmx:configRequest', function(evt) {
+        if (evt.detail.headers) {
+          // Get the CSRF token from the cookie
+          const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+          if (csrftoken) {
+            evt.detail.headers['X-CSRFToken'] = csrftoken;
+          }
+        }
+      });
+    });
+  </script>
