@@ -21,7 +21,7 @@ from django.conf.urls.static import static
 from django.conf.urls.i18n import i18n_patterns
 from home import views
 from django.views.static import serve
-from core.views import serve_protected_file
+from core.views import serve_protected_file, health_check
 
 handler404 = 'home.views.error_404'
 handler500 = 'home.views.error_500'
@@ -47,4 +47,7 @@ urlpatterns = [
 
     # Debug toolbar
     path("__debug__/", include("debug_toolbar.urls")),
+
+    # Health check endpoint
+    path('health/', health_check, name='health_check'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

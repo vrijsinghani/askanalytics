@@ -1,0 +1,170 @@
+version: "3.9"
+services:
+  askanalytics:
+    image: ${DOCKER_REGISTRY:-registry.rijsinghani.us}/${DOCKER_PROJECT:-askanalytics}:${VERSION:-latest}
+    networks:
+      - db_network
+      - web_network
+    env_file: ".env"  # Note: In production, consider using Docker secrets
+    environment:
+      - RUN_MIGRATIONS=${RUN_MIGRATIONS:-false}
+      - WAIT_FOR_DB=true
+      - WAIT_FOR_REDIS=true
+      - COLLECT_STATIC=${COLLECT_STATIC:-false}
+      # MinIO configuration
+      - STORAGE_BACKEND=MINIO
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+      - MINIO_BUCKET_NAME=${MINIO_BUCKET_NAME}
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT}
+      - MINIO_USE_SSL=${MINIO_USE_SSL:-True}
+      - MINIO_VERIFY_SSL=${MINIO_VERIFY_SSL:-True}
+      - MINIO_MAX_CONNECTIONS=${MINIO_MAX_CONNECTIONS:-30}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${APP_PORT:-8000}/health/?format=simple"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+    ports:
+      - "${APP_PORT:-8000}:${APP_PORT:-8000}"
+    volumes:
+      - logs_data:/app/logs
+    # No need for media_data volume since we're using MinIO for storage
+
+  redis:
+    image: redis:latest
+    command: redis-server
+    volumes:
+      - redis_data:/data
+    networks:
+      - db_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+      update_config:
+        parallelism: 1
+        delay: 10s
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+
+  askanalytics-worker:
+    image: ${DOCKER_REGISTRY:-registry.rijsinghani.us}/${DOCKER_PROJECT:-askanalytics}-worker:${VERSION:-latest}
+    env_file: ".env"  # Note: In production, consider using Docker secrets
+    networks:
+      - db_network
+    environment:
+      DJANGO_SETTINGS_MODULE: "core.settings"
+      PYTHONPATH: /app
+      # MinIO configuration
+      STORAGE_BACKEND: MINIO
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
+      MINIO_USE_SSL: ${MINIO_USE_SSL:-True}
+      MINIO_VERIFY_SSL: ${MINIO_VERIFY_SSL:-True}
+      MINIO_MAX_CONNECTIONS: ${MINIO_MAX_CONNECTIONS:-30}
+    command: celery -A apps.tasks worker -l info
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+      update_config:
+        parallelism: 1
+        delay: 10s
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    volumes:
+      - logs_data:/app/logs
+    # No need for media_data volume since we're using MinIO for storage
+
+  askanalytics-beat:
+    image: ${DOCKER_REGISTRY:-registry.rijsinghani.us}/${DOCKER_PROJECT:-askanalytics}-worker:${VERSION:-latest}
+    env_file: ".env"  # Note: In production, consider using Docker secrets
+    networks:
+      - db_network
+    environment:
+      DJANGO_SETTINGS_MODULE: "core.settings"
+      PYTHONPATH: /app
+      # MinIO configuration
+      STORAGE_BACKEND: MINIO
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
+      MINIO_USE_SSL: ${MINIO_USE_SSL:-True}
+      MINIO_VERIFY_SSL: ${MINIO_VERIFY_SSL:-True}
+      MINIO_MAX_CONNECTIONS: ${MINIO_MAX_CONNECTIONS:-30}
+    command: celery -A apps.tasks beat -l info
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+      update_config:
+        parallelism: 1
+        delay: 10s
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 256M
+    volumes:
+      - logs_data:/app/logs
+
+volumes:
+  redis_data:
+    driver: local
+  logs_data:
+    driver: local
+  # Removed media_data volume since we're using MinIO for storage
+
+networks:
+  db_network:
+    driver: overlay
+    attachable: true
+  web_network:
+    driver: overlay
+    attachable: true
+
+# For production deployment with Docker Swarm, consider using secrets instead of environment variables
+# Example of how to define secrets:
+#
+# secrets:
+#   minio_access_key:
+#     external: true
+#   minio_secret_key:
+#     external: true
+#
+# Then in the service definition:
+# services:
+#   askanalytics:
+#     secrets:
+#       - minio_access_key
+#       - minio_secret_key
+#     environment:
+#       - MINIO_ACCESS_KEY_FILE=/run/secrets/minio_access_key
+#       - MINIO_SECRET_KEY_FILE=/run/secrets/minio_secret_key

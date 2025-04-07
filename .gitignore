@@ -177,3 +177,5 @@ celerybeat-schedule.dir
 
 package-lock.json
 secrets/
+# temporary during migration
+neuralami-control/

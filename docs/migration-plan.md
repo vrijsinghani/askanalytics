@@ -1,6 +1,6 @@
 # Migration Plan
 
-This document outlines the systematic approach to migrate essential components from the older `neuralami-control` project to the newer `askanalytics` project.
+This document outlines the systematic approach to migrate essential components from the older `neuralami-control` project (located in the neuralami-control directory) to the newer `askanalytics` project.
 
 ## 1. Detailed Migration Steps
 

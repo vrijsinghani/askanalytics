@@ -1,22 +1,81 @@
-FROM python:3.10.4
+# Build stage for dependencies
+FROM python:3.10-slim AS builder
 
-# set environment variables
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    wget \
+    build-essential \
+    libssl-dev \
+    zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+# Final stage
+FROM python:3.10-slim
 
-# install python dependencies
-RUN pip install --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/root/.local/bin:$PATH"
 
-COPY . .
+# Add build arguments for version and commit
+ARG VERSION=latest
+ARG COMMIT=unknown
+ARG COMMIT_DATE
+ENV VERSION=$VERSION
+ENV COMMIT=$COMMIT
+ENV COMMIT_DATE=$COMMIT_DATE
+ENV IS_DOCKER=true
 
-# Manage Assets & DB 
-RUN python manage.py collectstatic --no-input 
-RUN python manage.py makemigrations
-RUN python manage.py migrate
+# Install runtime dependencies and UV
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libssl-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# gunicorn
-EXPOSE 5005
-CMD ["gunicorn", "--config", "gunicorn-cfg.py", "core.wsgi"]
+# Create directory for env files
+RUN mkdir -p /app/env-files
+
+WORKDIR /app
+
+# Copy requirements file
+COPY requirements.docker.txt ./
+
+# Create venv and install dependencies
+RUN uv venv /app/.venv && \
+    . /app/.venv/bin/activate && \
+    uv pip install -r requirements.docker.txt
+
+# Copy example env file
+COPY env-files/.env.example /app/env-files/
+
+# Copy entrypoint script
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# Copy docker start server script
+COPY docker_start_server.sh /app/start_server.sh
+RUN chmod +x /app/start_server.sh && \
+    sed -i 's/\r$//' /app/start_server.sh
+
+# Copy only necessary application files
+COPY apps ./apps
+COPY core ./core
+COPY staticfiles ./staticfiles
+COPY templates ./templates
+RUN mkdir -p /app/logs /app/media
+
+# Create non-root user
+RUN useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app
+
+EXPOSE ${APP_PORT:-8000}
+
+# Ensure we use the venv python
+ENV PATH="/app/.venv/bin:$PATH"
+
+# Switch to non-root user
+USER appuser
+
+ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["/app/start_server.sh"]

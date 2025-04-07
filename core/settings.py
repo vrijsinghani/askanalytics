@@ -16,10 +16,14 @@ from django.contrib import messages
 from dotenv import load_dotenv
 from str2bool import str2bool
 import os, random, string, json, mimetypes
+import logging
+import colorlog
 
 # Add this near the top of the file, after the imports
 mimetypes.add_type("application/javascript", ".js", True)
 mimetypes.add_type("text/javascript", ".js", True)
+
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -48,6 +52,30 @@ if not SECRET_KEY:
 
 # Enable/Disable DEBUG Mode
 DEBUG = str2bool(os.environ.get('DEBUG'))
+
+# Set up a default logger for development
+def setup_dev_logger():
+    """Set up a default logger for development with colorful output"""
+    handler = colorlog.StreamHandler()
+    handler.setFormatter(colorlog.ColoredFormatter(
+        '%(log_color)s%(levelname)-8s%(reset)s %(cyan)s[%(asctime)s]%(reset)s %(blue)s%(name)s.%(module)s%(reset)s.%(funcName)s:%(lineno)d %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        log_colors={
+            'DEBUG': 'bold_cyan',
+            'INFO': 'bold_green',
+            'WARNING': 'bold_yellow',
+            'ERROR': 'bold_red',
+            'CRITICAL': 'bold_red,bg_white',
+        }
+    ))
+    logger = logging.getLogger()
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    return logger
+
+# Only set up the dev logger if we're not in production and not in Docker
+if not IS_DOCKER and DEBUG:
+    dev_logger = setup_dev_logger()
 #print(' DEBUG -> ' + str(DEBUG) )
 
 # Add localhost to ALLOWED_HOSTS for Docker health checks
@@ -351,6 +379,22 @@ LOGGING = {
             'format': '{levelname} {message}',
             'style': '{',
         },
+        'colored': {
+            '()': 'colorlog.ColoredFormatter',
+            'format': '%(log_color)s%(levelname)-8s%(reset)s %(cyan)s[%(asctime)s]%(reset)s %(blue)s%(name)s.%(module)s%(reset)s.%(funcName)s:%(lineno)d %(message)s',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+            'log_colors': {
+                'DEBUG': 'bold_cyan',
+                'INFO': 'bold_green',
+                'WARNING': 'bold_yellow',
+                'ERROR': 'bold_red',
+                'CRITICAL': 'bold_red,bg_white',
+            },
+        },
+        'detailed': {
+            'format': '%(levelname)-8s [%(asctime)s] %(name)s.%(module)s.%(funcName)s:%(lineno)d %(message)s',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
         # Commented out json formatter to avoid dependency
         # 'json': {
         #     'format': '%(asctime)s %(levelname)s %(name)s %(message)s',
@@ -370,7 +414,7 @@ LOGGING = {
         'console': {
             'level': 'INFO',
             'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
+            'formatter': 'colored',
         },
         'file': {
             'level': 'INFO',
@@ -378,7 +422,7 @@ LOGGING = {
             'filename': os.path.join(LOG_DIR, 'django.log') if LOG_DIR else '/dev/null',
             'maxBytes': 1024 * 1024 * 10,  # 10 MB
             'backupCount': 5,
-            'formatter': 'verbose',
+            'formatter': 'detailed',
         },
         'celery': {
             'level': 'INFO',
@@ -386,7 +430,7 @@ LOGGING = {
             'filename': os.path.join(LOG_DIR, 'celery.log') if LOG_DIR else '/dev/null',
             'maxBytes': 1024 * 1024 * 10,  # 10 MB
             'backupCount': 5,
-            'formatter': 'verbose',
+            'formatter': 'detailed',
         },
         'mail_admins': {
             'level': 'ERROR',
@@ -521,3 +565,10 @@ if EMAIL_HOST_USER and EMAIL_HOST_PASSWORD:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 else:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+# Import version information
+try:
+    from core.version import VERSION, COMMIT
+except ImportError:
+    VERSION = '0.0.0'
+    COMMIT = 'dev'

@@ -1,46 +1,83 @@
-version: "3.8"
+version: "3.9"
 services:
-  appseed-app:
-    container_name: appseed-app
-    restart: always
-    build:
-      context: .
+  askanalytics:
+    image: ${DOCKER_REGISTRY:-registry.rijsinghani.us}/${DOCKER_PROJECT:-askanalytics}:${VERSION:-latest}
     networks:
       - db_network
       - web_network
-  nginx:
-    container_name: nginx
-    restart: always
-    image: "nginx:latest"
-    ports:
-      - "5085:5085"
-    volumes:
-      - ./nginx:/etc/nginx/conf.d
-    networks:
-      - web_network
+    env_file: ".env"
+    environment:
+      - RUN_MIGRATIONS=${RUN_MIGRATIONS:-false}
+      - WAIT_FOR_DB=true
+      - WAIT_FOR_REDIS=true
+      - COLLECT_STATIC=${COLLECT_STATIC:-false}
     depends_on:
-      - appseed-app
-  redis:
-    image: redis:7.0.12
-    container_name: redis
-    command: ["redis-server", "--port", "6379", "--slave-read-only", "no"]
-    restart: always
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${APP_PORT:-8000}/health/?format=simple"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
     ports:
-      - 6379:6379
+      - "${APP_PORT:-8000}:${APP_PORT:-8000}"
+    volumes:
+      - ./media:/app/media
+      - ./logs:/app/logs
+
+  redis:
+    image: redis:latest
+    command: redis-server
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
     networks:
       - db_network
-  celery:
-    container_name: celery
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: always
-    build:
-      context: .
+
+  askanalytics-worker:
+    image: ${DOCKER_REGISTRY:-registry.rijsinghani.us}/${DOCKER_PROJECT:-askanalytics}-worker:${VERSION:-latest}
+    env_file: ".env"
     networks:
       - db_network
     environment:
       DJANGO_SETTINGS_MODULE: "core.settings"
-    command: "celery -A apps.tasks worker -l info -B"
+      PYTHONPATH: /app
+    command: celery -A apps.tasks worker -l info
     depends_on:
-      - appseed-app
+      redis:
+        condition: service_healthy
+    restart: always
+    volumes:
+      - ./media:/app/media
+      - ./logs:/app/logs
+
+  askanalytics-beat:
+    image: ${DOCKER_REGISTRY:-registry.rijsinghani.us}/${DOCKER_PROJECT:-askanalytics}-worker:${VERSION:-latest}
+    env_file: ".env"
+    networks:
+      - db_network
+    environment:
+      DJANGO_SETTINGS_MODULE: "core.settings"
+      PYTHONPATH: /app
+    command: celery -A apps.tasks beat -l info
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: always
+    volumes:
+      - ./logs:/app/logs
+
+volumes:
+  redis_data:
 
 networks:
   db_network:
