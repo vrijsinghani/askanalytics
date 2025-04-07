@@ -176,3 +176,4 @@ celerybeat-schedule.dat
 celerybeat-schedule.dir
 
 package-lock.json
+secrets/
