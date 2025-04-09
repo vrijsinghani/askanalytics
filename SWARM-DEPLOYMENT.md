@@ -50,7 +50,14 @@ MINIO_MAX_CONNECTIONS=30
 2. Navigate to "Stacks" and click "Add stack"
 3. Give your stack a name (e.g., "askanalytics")
 4. Upload the `docker-compose.swarm.yml` file or paste its contents
-5. Click "Deploy the stack"
+5. **IMPORTANT**: Before deploying, go to the "Environment variables" tab
+6. Click "Load variables from .env file" and upload your `.env` file
+7. Verify that all environment variables are loaded correctly
+8. Click "Deploy the stack"
+
+**Note**: The stack file uses YAML anchors (`&common-env`) to define environment variables once and reuse them across all services. This ensures consistency and makes maintenance easier. All variables from your `.env` file are included in this common definition.
+
+**Important**: When using YAML anchors with the `<<: *common-env` syntax, be careful not to define an `environment` section after it, as this will completely override the common environment variables rather than merging with them.
 
 ### Using Docker CLI
 
@@ -113,6 +120,68 @@ Note that the Celery beat service should always have exactly one replica to avoi
 
 ## Troubleshooting
 
+### Environment Variables Issues
+
+#### Common Issue: Environment Variables Not Being Passed
+
+If you're seeing errors like "no such table: django_celery_beat_periodictask" in the Celery Beat container, it's likely that the environment variables (especially database connection details) aren't being passed correctly.
+
+This often happens when you define an `environment` section after using the `<<: *common-env` anchor, which completely overrides the common environment variables rather than merging with them.
+
+**Solution**: Either move all environment variables to the common section or ensure you don't redefine the `environment` key after using the anchor.
+
+#### Understanding YAML Anchors in the Stack File
+
+The stack file uses YAML anchors to define environment variables once and reuse them:
+
+```yaml
+# Define common environment variables
+x-common-env: &common-env
+  environment:
+    - DB_HOST=${DB_HOST}
+    # ... other variables
+
+services:
+  askanalytics:
+    # Use the common environment variables
+    <<: *common-env
+    # Service-specific settings
+```
+
+This approach ensures all services have the same environment variables without duplication.
+
+#### Troubleshooting Missing Environment Variables
+
+If you're seeing errors like "Attempting to connect to database at : with user" or other missing environment variable issues:
+
+1. **Check Portainer Environment Variables**:
+   - In Portainer, go to your stack
+   - Click on "Environment variables"
+   - Verify all variables are present and correctly formatted
+
+2. **Manually Add Critical Variables**:
+   - If specific variables aren't being passed, add them directly in the Portainer UI
+   - Focus on database connection variables: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASS`
+
+3. **Check Container Logs**:
+   - Look for specific error messages about missing environment variables
+   - The entrypoint script will print environment variable values for debugging
+
+### Database Connection Issues
+
+If you're seeing database connection errors:
+
+1. **Verify Database Accessibility**:
+   - Make sure your database server allows connections from the Swarm nodes
+   - Check firewall rules and network connectivity
+
+2. **Test Connection Manually**:
+   - Connect to a container: `docker exec -it <container_id> bash`
+   - Try to connect to the database: `python -c "import psycopg2; conn = psycopg2.connect('host=<db_host> port=<db_port> dbname=<db_name> user=<db_user> password=<db_pass>'); print('Connected!')"`
+
+### General Troubleshooting
+
 - Check service logs: `docker service logs askanalytics_askanalytics`
 - Verify health status: `curl http://your-app-url/health/`
 - Check if MinIO is accessible from the containers
+- Inspect container environment: `docker exec <container_id> env`

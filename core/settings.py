@@ -224,13 +224,15 @@ if DB_ENGINE and DB_NAME and DB_USERNAME:
         },
     }
 else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-            'CONN_MAX_AGE': DB_CONN_MAX_AGE,
+    # Only use SQLite if DB_ENGINE is not set
+    if not DB_ENGINE:
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': BASE_DIR / 'db.sqlite3',
+                'CONN_MAX_AGE': DB_CONN_MAX_AGE,
+            }
         }
-    }
 
 # Database routers
 DATABASE_ROUTERS = []

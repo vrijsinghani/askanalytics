@@ -1,25 +1,117 @@
 version: "3.9"
+# IMPORTANT: When deploying with Portainer, upload your .env file in the Environment variables section
+# This stack file uses YAML anchors to define environment variables once and reuse them across services
+
+# Common environment variables for all services
+x-common-env: &common-env
+  environment:
+    # Django settings
+    - DJANGO_SETTINGS_MODULE=core.settings
+    - PYTHONPATH=/app
+
+    # Application settings
+    - APP_DOMAIN=${APP_DOMAIN}
+    - APP_PORT=${APP_PORT:-3010}
+    - IS_DOCKER=True
+    - DEBUG=${DEBUG:-False}
+    - SECRET_KEY=${SECRET_KEY}
+    - ALLOWED_HOSTS=${ALLOWED_HOSTS:-*}
+
+    # API Keys
+    - NEURALAMI_API_TOKEN=${NEURALAMI_API_TOKEN}
+    - GENERAL_MODEL=${GENERAL_MODEL}
+    - SUMMARIZER=${SUMMARIZER}
+    - SUMMARIZER_MAX_TOKENS=${SUMMARIZER_MAX_TOKENS}
+    - THINKING_MODEL=${THINKING_MODEL}
+    - BUSINESS_CREDIBILITY_MODEL=${BUSINESS_CREDIBILITY_MODEL}
+
+    # Company Information
+    - EMAIL_ADDRESS=${EMAIL_ADDRESS}
+    - COMPANY_NAME=${COMPANY_NAME}
+
+    # External Services
+    - FIRECRAWL_URL=${FIRECRAWL_URL}
+    - PLAYWRIGHT_API_URL=${PLAYWRIGHT_API_URL}
+    - PLAYWRIGHT_API_KEY=${PLAYWRIGHT_API_KEY}
+
+    # OAuth Settings
+    - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+    - GOOGLE_SECRET_KEY=${GOOGLE_SECRET_KEY}
+    - GOOGLE_CLIENT_SECRETS_FILE=${GOOGLE_CLIENT_SECRETS_FILE}
+    - SERVICE_ACCOUNT_FILE=${SERVICE_ACCOUNT_FILE}
+    - GOOGLE_ADS_DEVELOPER_TOKEN=${GOOGLE_ADS_DEVELOPER_TOKEN}
+    - GOOGLE_OAUTH_REDIRECT_URI=${GOOGLE_OAUTH_REDIRECT_URI}
+
+    # LLM API Settings
+    - API_BASE_URL=${API_BASE_URL}
+    - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY}
+    - SERPAPI_API_KEY=${SERPAPI_API_KEY}
+    - OPENAI_API_BASE=${OPENAI_API_BASE}
+    - ALPHA_VANTAGE_API_KEY=${ALPHA_VANTAGE_API_KEY}
+    - DATAFORSEO_EMAIL=${DATAFORSEO_EMAIL}
+    - DATAFORSEO_PASSWORD=${DATAFORSEO_PASSWORD}
+    - PERPLEXITYAI_API_KEY=${PERPLEXITYAI_API_KEY}
+    - OPENAI_API_KEY=${OPENAI_API_KEY}
+    - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+    - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    - PAGESPEED_API_KEY=${PAGESPEED_API_KEY}
+    - CREWAI_DISABLE_LITELLM=${CREWAI_DISABLE_LITELLM}
+
+    # Database Settings
+    - DB_ENGINE=${DB_ENGINE}
+    - DB_NAME=${DB_NAME}
+    - DB_USERNAME=${DB_USERNAME}
+    - DB_PASS=${DB_PASS}
+    - DB_HOST=${DB_HOST}
+    - DB_PORT=${DB_PORT}
+    - DB_CONN_MAX_AGE=${DB_CONN_MAX_AGE:-60}
+
+    # LiteLLM Logs database settings
+    - LITELLM_DB_ENGINE=${LITELLM_DB_ENGINE}
+    - LITELLM_DB_NAME=${LITELLM_DB_NAME}
+    - LITELLM_DB_USERNAME=${LITELLM_DB_USERNAME}
+    - LITELLM_DB_PASS=${LITELLM_DB_PASS}
+    - LITELLM_DB_HOST=${LITELLM_DB_HOST}
+    - LITELLM_DB_PORT=${LITELLM_DB_PORT}
+
+    # Storage Settings
+    - STORAGE_BACKEND=${STORAGE_BACKEND}
+    - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+    - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+    - MINIO_BUCKET_NAME=${MINIO_BUCKET_NAME}
+    - MINIO_ENDPOINT=${MINIO_ENDPOINT}
+    - MINIO_USE_SSL=${MINIO_USE_SSL}
+    - MINIO_VERIFY_SSL=${MINIO_VERIFY_SSL}
+    - MINIO_MAX_CONNECTIONS=${MINIO_MAX_CONNECTIONS}
+
+    # Email Settings
+    - EMAIL_HOST_USER=${EMAIL_HOST_USER}
+    - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
+
+    # Redis connection (using service name)
+    - REDIS_HOST=redis
+    - REDIS_PORT=6379
+    - CELERY_BROKER_URL=redis://redis:6379/0
+    - CELERY_RESULT_BACKEND=redis://redis:6379/0
+
+    # Deployment settings
+    - RUN_MIGRATIONS=${RUN_MIGRATIONS:-false}
+    - WAIT_FOR_DB=true
+    - WAIT_FOR_REDIS=true
+    - COLLECT_STATIC=${COLLECT_STATIC:-false}
+
 services:
   askanalytics:
     image: ${DOCKER_REGISTRY:-registry.rijsinghani.us}/${DOCKER_PROJECT:-askanalytics}:${VERSION:-latest}
     networks:
       - db_network
       - web_network
-    env_file: ".env"  # Note: In production, consider using Docker secrets
-    environment:
-      - RUN_MIGRATIONS=${RUN_MIGRATIONS:-false}
-      - WAIT_FOR_DB=true
-      - WAIT_FOR_REDIS=true
-      - COLLECT_STATIC=${COLLECT_STATIC:-false}
-      # MinIO configuration
-      - STORAGE_BACKEND=MINIO
-      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
-      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
-      - MINIO_BUCKET_NAME=${MINIO_BUCKET_NAME}
-      - MINIO_ENDPOINT=${MINIO_ENDPOINT}
-      - MINIO_USE_SSL=${MINIO_USE_SSL:-True}
-      - MINIO_VERIFY_SSL=${MINIO_VERIFY_SSL:-True}
-      - MINIO_MAX_CONNECTIONS=${MINIO_MAX_CONNECTIONS:-30}
+    # Use common environment variables
+    <<: *common-env
+    # Add DNS servers for better external name resolution
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:${APP_PORT:-8000}/health/?format=simple"]
       interval: 30s
@@ -42,15 +134,14 @@ services:
       - "${APP_PORT:-8000}:${APP_PORT:-8000}"
     volumes:
       - logs_data:/app/logs
-    # No need for media_data volume since we're using MinIO for storage
 
   redis:
     image: redis:latest
     command: redis-server
-    volumes:
-      - redis_data:/data
     networks:
       - db_network
+    volumes:
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -72,21 +163,14 @@ services:
 
   askanalytics-worker:
     image: ${DOCKER_REGISTRY:-registry.rijsinghani.us}/${DOCKER_PROJECT:-askanalytics}-worker:${VERSION:-latest}
-    env_file: ".env"  # Note: In production, consider using Docker secrets
     networks:
       - db_network
-    environment:
-      DJANGO_SETTINGS_MODULE: "core.settings"
-      PYTHONPATH: /app
-      # MinIO configuration
-      STORAGE_BACKEND: MINIO
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
-      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
-      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
-      MINIO_USE_SSL: ${MINIO_USE_SSL:-True}
-      MINIO_VERIFY_SSL: ${MINIO_VERIFY_SSL:-True}
-      MINIO_MAX_CONNECTIONS: ${MINIO_MAX_CONNECTIONS:-30}
+    # Use common environment variables
+    <<: *common-env
+    # Add DNS servers for better external name resolution
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     command: celery -A apps.tasks worker -l info
     deploy:
       replicas: 1
@@ -101,25 +185,17 @@ services:
           memory: 512M
     volumes:
       - logs_data:/app/logs
-    # No need for media_data volume since we're using MinIO for storage
 
   askanalytics-beat:
     image: ${DOCKER_REGISTRY:-registry.rijsinghani.us}/${DOCKER_PROJECT:-askanalytics}-worker:${VERSION:-latest}
-    env_file: ".env"  # Note: In production, consider using Docker secrets
     networks:
       - db_network
-    environment:
-      DJANGO_SETTINGS_MODULE: "core.settings"
-      PYTHONPATH: /app
-      # MinIO configuration
-      STORAGE_BACKEND: MINIO
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
-      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
-      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
-      MINIO_USE_SSL: ${MINIO_USE_SSL:-True}
-      MINIO_VERIFY_SSL: ${MINIO_VERIFY_SSL:-True}
-      MINIO_MAX_CONNECTIONS: ${MINIO_MAX_CONNECTIONS:-30}
+    # Use common environment variables
+    <<: *common-env
+    # Add DNS servers for better external name resolution
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     command: celery -A apps.tasks beat -l info
     deploy:
       replicas: 1
@@ -140,31 +216,15 @@ volumes:
     driver: local
   logs_data:
     driver: local
-  # Removed media_data volume since we're using MinIO for storage
 
 networks:
   db_network:
     driver: overlay
     attachable: true
+    # This is important for external connectivity
+    internal: false
   web_network:
     driver: overlay
     attachable: true
-
-# For production deployment with Docker Swarm, consider using secrets instead of environment variables
-# Example of how to define secrets:
-#
-# secrets:
-#   minio_access_key:
-#     external: true
-#   minio_secret_key:
-#     external: true
-#
-# Then in the service definition:
-# services:
-#   askanalytics:
-#     secrets:
-#       - minio_access_key
-#       - minio_secret_key
-#     environment:
-#       - MINIO_ACCESS_KEY_FILE=/run/secrets/minio_access_key
-#       - MINIO_SECRET_KEY_FILE=/run/secrets/minio_secret_key
+    # This is important for external connectivity
+    internal: false

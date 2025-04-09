@@ -46,7 +46,7 @@ docker build \
     .
 
 # Note: Redis uses the official Redis image, so we don't need to build it
-
+PUSH_IMAGES=true
 # Push images to registry if PUSH_IMAGES is set to true
 if [ "${PUSH_IMAGES:-false}" = "true" ]; then
     echo "Pushing images to registry..."

@@ -31,6 +31,9 @@ ENV IS_DOCKER=true
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libssl-dev \
     curl \
+    iputils-ping \
+    netcat-traditional \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/* \
     && curl -LsSf https://astral.sh/uv/install.sh | sh
 
@@ -50,9 +53,16 @@ RUN uv venv /app/.venv && \
 # Copy example env file
 COPY env-files/.env.example /app/env-files/
 
+# Copy helper scripts
+COPY check_db.py /app/check_db.py
+COPY check_redis.py /app/check_redis.py
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/check_db.py /app/check_redis.py /app/entrypoint.sh
+
 # Copy only necessary application files
 COPY apps ./apps
 COPY core ./core
+COPY home ./home
 RUN mkdir -p /app/logs /app/media
 
 # Create non-root user
@@ -65,6 +75,8 @@ ENV PATH="/app/.venv/bin:$PATH"
 # Switch to non-root user
 USER celery
 
-# Default command runs both worker and beat
-# Override with specific command if needed
+# Use entrypoint script for database and Redis checks
+ENTRYPOINT ["/app/entrypoint.sh"]
+
+# Default command runs worker
 CMD ["celery", "-A", "apps.tasks", "worker", "-l", "info"]

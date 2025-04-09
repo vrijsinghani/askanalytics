@@ -30,6 +30,9 @@ ENV IS_DOCKER=true
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libssl-dev \
     curl \
+    iputils-ping \
+    netcat-traditional \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/* \
     && curl -LsSf https://astral.sh/uv/install.sh | sh
 
@@ -49,9 +52,11 @@ RUN uv venv /app/.venv && \
 # Copy example env file
 COPY env-files/.env.example /app/env-files/
 
-# Copy entrypoint script
+# Copy entrypoint script and helper scripts
 COPY entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
+COPY check_db.py /app/check_db.py
+COPY check_redis.py /app/check_redis.py
+RUN chmod +x /app/entrypoint.sh /app/check_db.py /app/check_redis.py
 
 # Copy docker start server script
 COPY docker_start_server.sh /app/start_server.sh
@@ -61,6 +66,8 @@ RUN chmod +x /app/start_server.sh && \
 # Copy only necessary application files
 COPY apps ./apps
 COPY core ./core
+COPY home ./home
+
 COPY staticfiles ./staticfiles
 COPY templates ./templates
 RUN mkdir -p /app/logs /app/media
