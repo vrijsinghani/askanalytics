@@ -19,6 +19,9 @@ import os, random, string, json, mimetypes
 import logging
 import colorlog
 
+# Configure logger
+logger = logging.getLogger('core.settings')
+
 # Add this near the top of the file, after the imports
 mimetypes.add_type("application/javascript", ".js", True)
 mimetypes.add_type("text/javascript", ".js", True)
@@ -81,7 +84,7 @@ if not IS_DOCKER and DEBUG:
 # Add localhost to ALLOWED_HOSTS for Docker health checks
 APP_DOMAIN = os.getenv('APP_DOMAIN', '')
 ALLOWED_HOSTS =  [domain.strip() for domain in APP_DOMAIN.split(',') if domain.strip()]
-ALLOWED_HOSTS.extend(['localhost', '127.0.0.1','localhost:3010'])
+ALLOWED_HOSTS.extend(['localhost', '127.0.0.1','localhost:3010','192.168.30.100','192.168.30.100:8999','192.168.30.100:8998'])
 
 # Used by DEBUG-Toolbar
 INTERNAL_IPS = [
@@ -292,7 +295,68 @@ MEDIA_URL = 'media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Storage configuration
-DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+STORAGE_BACKEND = os.getenv('STORAGE_BACKEND', '')  # Options: 'S3', 'MINIO', or empty for local filesystem
+
+if STORAGE_BACKEND == 'S3':
+    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    # AWS S3 settings
+    AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+    AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME')
+    AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME')
+    AWS_S3_CUSTOM_DOMAIN = os.getenv('AWS_S3_CUSTOM_DOMAIN')
+    AWS_S3_ADDRESSING_STYLE = 'virtual'
+    AWS_DEFAULT_ACL = 'private'
+    AWS_S3_FILE_OVERWRITE = False
+    logger.info(f"Using AWS S3 Storage with bucket: {AWS_STORAGE_BUCKET_NAME}")
+
+elif STORAGE_BACKEND == 'MINIO':
+    # First try standard S3Boto3Storage, fallback to MinIOStorage if needed
+    try:
+        # Test if standard S3Boto3Storage works with MinIO
+        import boto3
+        from botocore.client import Config
+
+        # MinIO settings
+        AWS_ACCESS_KEY_ID = os.getenv('MINIO_ACCESS_KEY')
+        AWS_SECRET_ACCESS_KEY = os.getenv('MINIO_SECRET_KEY')
+        AWS_STORAGE_BUCKET_NAME = os.getenv('MINIO_BUCKET_NAME', 'askanalytics')
+        AWS_S3_ENDPOINT_URL = os.getenv('MINIO_ENDPOINT_URL', 'https://minio.neuralami.ai')
+        AWS_S3_REGION_NAME = os.getenv('MINIO_REGION_NAME', 'us-east-1')
+        AWS_S3_USE_SSL = os.getenv('MINIO_USE_SSL', 'True').lower() == 'true'
+        AWS_S3_VERIFY = os.getenv('MINIO_VERIFY', 'True').lower() == 'true'
+        AWS_S3_ADDRESSING_STYLE = 'path'
+        AWS_DEFAULT_ACL = 'private'
+        AWS_S3_FILE_OVERWRITE = False
+
+        # Test connection with head_bucket
+        s3 = boto3.client(
+            's3',
+            endpoint_url=AWS_S3_ENDPOINT_URL,
+            aws_access_key_id=AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+            region_name=AWS_S3_REGION_NAME,
+            config=Config(signature_version='s3v4'),
+            verify=AWS_S3_VERIFY
+        )
+
+        # Try a head_bucket operation to test connection
+        s3.head_bucket(Bucket=AWS_STORAGE_BUCKET_NAME)
+
+        # If we get here, standard S3Boto3Storage should work
+        DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+        logger.info(f"Using standard S3Boto3Storage with MinIO bucket: {AWS_STORAGE_BUCKET_NAME} at {AWS_S3_ENDPOINT_URL}")
+
+    except Exception as e:
+        # If there's an error, use our custom MinIOStorage as fallback
+        DEFAULT_FILE_STORAGE = 'core.minio_storage.MinIOStorage'
+        logger.warning(f"Using custom MinIOStorage due to error with standard S3Boto3Storage: {str(e)}")
+        logger.info(f"MinIO bucket: {AWS_STORAGE_BUCKET_NAME} at {AWS_S3_ENDPOINT_URL}")
+
+else:
+    # Default to local filesystem storage
+    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+    logger.info("Using local filesystem storage")
 
 # Secure file storage for protected files
 SECURE_FILE_STORAGE = 'core.storage.SecureFileStorage'
