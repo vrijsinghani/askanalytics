@@ -18,6 +18,7 @@ from str2bool import str2bool
 import os, random, string, json, mimetypes
 import logging
 import colorlog
+from botocore.config import Config
 
 # Configure logger
 logger = logging.getLogger('core.settings')
@@ -297,66 +298,72 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # Storage configuration
 STORAGE_BACKEND = os.getenv('STORAGE_BACKEND', '')  # Options: 'S3', 'MINIO', or empty for local filesystem
 
-if STORAGE_BACKEND == 'S3':
+# Storage Configuration
+STORAGE_BACKEND = os.getenv('STORAGE_BACKEND', '')  # Options: 'B2', 'GCS', 'S3', 'AZURE', 'MINIO'
+
+if STORAGE_BACKEND == 'B2':
+    DEFAULT_FILE_STORAGE = 'core.storage.B2Storage'
+    B2_APPLICATION_KEY_ID = os.environ['B2_APPLICATION_KEY_ID']
+    B2_APPLICATION_KEY = os.environ['B2_APPLICATION_KEY']
+    B2_BUCKET_NAME = os.environ['B2_BUCKET_NAME']
+    logger.info(f"Using B2 Storage with bucket: {B2_BUCKET_NAME}")
+
+elif STORAGE_BACKEND == 'GCS':
+    DEFAULT_FILE_STORAGE = 'storages.backends.gcloud.GoogleCloudStorage'
+    GS_BUCKET_NAME = os.environ['GS_BUCKET_NAME']
+    GS_CREDENTIALS = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
+    GS_PROJECT_ID = os.environ.get('GS_PROJECT_ID')
+    logger.info(f"Using Google Cloud Storage with bucket: {GS_BUCKET_NAME}")
+
+elif STORAGE_BACKEND == 'S3':
     DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-    # AWS S3 settings
-    AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
-    AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
-    AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME')
-    AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME')
-    AWS_S3_CUSTOM_DOMAIN = os.getenv('AWS_S3_CUSTOM_DOMAIN')
-    AWS_S3_ADDRESSING_STYLE = 'virtual'
-    AWS_DEFAULT_ACL = 'private'
-    AWS_S3_FILE_OVERWRITE = False
+    AWS_ACCESS_KEY_ID = os.environ['AWS_ACCESS_KEY_ID']
+    AWS_SECRET_ACCESS_KEY = os.environ['AWS_SECRET_ACCESS_KEY']
+    AWS_STORAGE_BUCKET_NAME = os.environ['AWS_STORAGE_BUCKET_NAME']
+    AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'us-east-1')
+    AWS_S3_CUSTOM_DOMAIN = os.environ.get('AWS_S3_CUSTOM_DOMAIN')
+    AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'max-age=86400'}
     logger.info(f"Using AWS S3 Storage with bucket: {AWS_STORAGE_BUCKET_NAME}")
 
+elif STORAGE_BACKEND == 'AZURE':
+    DEFAULT_FILE_STORAGE = 'storages.backends.azure_storage.AzureStorage'
+    AZURE_ACCOUNT_NAME = os.environ['AZURE_ACCOUNT_NAME']
+    AZURE_ACCOUNT_KEY = os.environ['AZURE_ACCOUNT_KEY']
+    AZURE_CONTAINER = os.environ['AZURE_CONTAINER']
+    AZURE_SSL = True
+    logger.info(f"Using Azure Storage with container: {AZURE_CONTAINER}")
+
 elif STORAGE_BACKEND == 'MINIO':
-    # First try standard S3Boto3Storage, fallback to MinIOStorage if needed
-    try:
-        # Test if standard S3Boto3Storage works with MinIO
-        import boto3
-        from botocore.client import Config
+    DEFAULT_FILE_STORAGE = 'core.minio_storage.MinIOStorage'
+    AWS_ACCESS_KEY_ID = os.environ['MINIO_ACCESS_KEY']
+    AWS_SECRET_ACCESS_KEY = os.environ['MINIO_SECRET_KEY']
+    AWS_STORAGE_BUCKET_NAME = os.environ['MINIO_BUCKET_NAME']
+    AWS_S3_ENDPOINT_URL = os.environ['MINIO_ENDPOINT']
+    AWS_S3_USE_SSL = str2bool(os.getenv('MINIO_USE_SSL', 'True'))
+    AWS_S3_VERIFY = str2bool(os.getenv('MINIO_VERIFY_SSL', 'True'))
+    AWS_S3_MAX_POOL_CONNECTIONS = int(os.getenv('MINIO_MAX_CONNECTIONS', '30'))
 
-        # MinIO settings
-        AWS_ACCESS_KEY_ID = os.getenv('MINIO_ACCESS_KEY')
-        AWS_SECRET_ACCESS_KEY = os.getenv('MINIO_SECRET_KEY')
-        AWS_STORAGE_BUCKET_NAME = os.getenv('MINIO_BUCKET_NAME', 'askanalytics')
-        AWS_S3_ENDPOINT_URL = os.getenv('MINIO_ENDPOINT_URL', 'https://minio.neuralami.ai')
-        AWS_S3_REGION_NAME = os.getenv('MINIO_REGION_NAME', 'us-east-1')
-        AWS_S3_USE_SSL = os.getenv('MINIO_USE_SSL', 'True').lower() == 'true'
-        AWS_S3_VERIFY = os.getenv('MINIO_VERIFY', 'True').lower() == 'true'
-        AWS_S3_ADDRESSING_STYLE = 'path'
-        AWS_DEFAULT_ACL = 'private'
-        AWS_S3_FILE_OVERWRITE = False
+    # Add these settings for MinIO compatibility
+    AWS_S3_ADDRESSING_STYLE = 'path'
+    AWS_S3_SIGNATURE_VERSION = 's3v4'
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_QUERYSTRING_AUTH = False
+    AWS_DEFAULT_ACL = None
 
-        # Test connection with head_bucket
-        s3 = boto3.client(
-            's3',
-            endpoint_url=AWS_S3_ENDPOINT_URL,
-            aws_access_key_id=AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-            region_name=AWS_S3_REGION_NAME,
-            config=Config(signature_version='s3v4'),
-            verify=AWS_S3_VERIFY
-        )
+    # Configure boto3 to use these settings
+    AWS_S3_CONFIG = Config(
+        s3={'addressing_style': 'path'},
+        signature_version='s3v4',
+        retries={'max_attempts': 3},
+        max_pool_connections=AWS_S3_MAX_POOL_CONNECTIONS
+    )
 
-        # Try a head_bucket operation to test connection
-        s3.head_bucket(Bucket=AWS_STORAGE_BUCKET_NAME)
-
-        # If we get here, standard S3Boto3Storage should work
-        DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-        logger.info(f"Using standard S3Boto3Storage with MinIO bucket: {AWS_STORAGE_BUCKET_NAME} at {AWS_S3_ENDPOINT_URL}")
-
-    except Exception as e:
-        # If there's an error, use our custom MinIOStorage as fallback
-        DEFAULT_FILE_STORAGE = 'core.minio_storage.MinIOStorage'
-        logger.warning(f"Using custom MinIOStorage due to error with standard S3Boto3Storage: {str(e)}")
-        logger.info(f"MinIO bucket: {AWS_STORAGE_BUCKET_NAME} at {AWS_S3_ENDPOINT_URL}")
+    logger.info(f"Using MinIO Storage with bucket: {AWS_STORAGE_BUCKET_NAME} at {AWS_S3_ENDPOINT_URL}")
 
 else:
-    # Default to local filesystem storage
-    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
-    logger.info("Using local filesystem storage")
+    raise ValueError(f"Invalid STORAGE_BACKEND: {STORAGE_BACKEND}")
+
+STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 
 # Secure file storage for protected files
 SECURE_FILE_STORAGE = 'core.storage.SecureFileStorage'
